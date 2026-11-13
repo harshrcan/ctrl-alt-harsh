@@ -363,7 +363,7 @@
   function openModal(html, forced) { ui.desk = null; ui.modal = true; ui.forced = !!forced; $('win').innerHTML = html; $('modal').classList.add('on'); }
   function closeModal() { ui.modal = null; ui.forced = false; ui.desk = null; $('modal').classList.remove('on'); $('win').innerHTML = ''; ui.ts = null; nextPromo(); hud(); }
   const H = {};
-  $('win').addEventListener('click', (e) => { const b = e.target.closest('[data-a]'); if (!b || b.disabled) return; const fn = H[b.dataset.a]; if (fn) fn(b.dataset); });
+  $('win').addEventListener('click', (e) => { const b = e.target.closest('[data-a]'); if (!b || b.disabled) return; const fn = H[b.dataset.a]; if (fn) fn(b.dataset, b); });
   H.close = () => closeModal();
 
   /* DeskFlow: the ticketing app */
@@ -371,7 +371,7 @@
   function openDesk(tab) {
     const open = S.tickets.filter((t) => t.st !== 'done').sort((a, b) => (a.st === 'mine' ? 0 : 1) - (b.st === 'mine' ? 0 : 1) || a.due - b.due);
     if (!open.find((t) => t.uid === deskSel)) deskSel = open.length ? open[0].uid : null;
-    const tabs = [['queue', 'Queue (' + open.length + ')'], ['kb', 'Knowledge base'], ['stats', 'My stats']].map(([k, l]) => `<button class="tab ${k === tab ? 'on' : ''}" data-a="tab" data-t="${k}">${l}</button>`).join('');
+    const tabs = [['queue', 'Queue (' + open.length + ')'], ['kb', 'Knowledge base'], ['stats', 'My stats'], ['save', 'Save']].map(([k, l]) => `<button class="tab ${k === tab ? 'on' : ''}" data-a="tab" data-t="${k}">${l}</button>`).join('');
     let body = '';
     if (tab === 'queue') {
       const rows = open.map((t) => {
@@ -394,6 +394,15 @@
     } else if (tab === 'kb') {
       const cards = D.TICKETS.filter((t) => S.kb[t.id]).map((t) => `<article><span class="chip t${t.tier}">L${t.tier}</span><h4>${esc(t.learn[0])}</h4><p>${esc(t.learn[1])}</p></article>`).join('');
       body = `<div class="kb"><article class="pin"><h4>The six step method</h4><p>1. Identify the problem (ask questions). 2. Form a theory. 3. Test the theory. 4. Plan and apply the fix. 5. Verify it works. 6. Document it.</p></article>${cards || '<p class="empty">Close tickets to add what you learned here. ' + D.TICKETS.length + ' articles to collect.</p>'}<p class="dim">${Object.keys(S.kb).length} of ${D.TICKETS.length} articles unlocked</p></div>`;
+    } else if (tab === 'save') {
+      save(); const sv = load(), when = sv && sv.savedAt ? new Date(sv.savedAt).toLocaleString() : 'never';
+      body = `<div class="sv"><div><h4>Where your progress lives</h4>
+        <p>${ui.saveOk === false ? '<span class="bad">This browser is blocking storage, so nothing can be saved here. Use a save code instead.</span>' : 'The game saves by itself in <b>this browser, on this device</b>, for this address: <b>' + esc(location.host || 'local file') + '</b>.'}</p>
+        <p>It saves every 15 seconds, whenever you close a ticket, at the end of each day, and when you leave the page. Open tickets, your backpack and where you are standing are all kept.</p>
+        <p class="dim">Last saved: ${when}. There is no account or server. A different browser, device or web address starts fresh, and clearing site data or private browsing erases it. To move your progress, use a save code.</p></div>
+        <div><h4>Move your save</h4><textarea id="sv-out" readonly>${sv ? packSave(sv) : ''}</textarea><button class="pri" data-a="svcopy">Copy save code</button>
+        <h4>Load a save code</h4><textarea id="sv-in" placeholder="Paste a save code here"></textarea><button class="pri" data-a="svload">Load this save</button><p id="sv-msg" class="dim"></p>
+        <h4>Start over</h4><button class="x" data-a="svreset">Erase my save</button></div></div>`;
     } else {
       const nx = D.LEVELS[S.lvl + 1], s = S.stats;
       body = `<div class="stats"><div><b>${lvlName()}</b><small>current role</small></div><div><b>${S.xp}</b><small>XP${nx ? ' (next: ' + nx.xp + ')' : ''}</small></div><div><b>${s.closed}</b><small>tickets closed</small></div>
@@ -404,6 +413,22 @@
     ui.desk = tab;
   }
   H.tab = (d) => openDesk(d.t);
+  H.svcopy = () => {
+    const t = $('sv-out'); t.focus(); t.select();
+    const done = () => toast('Save code copied. Paste it into the Save tab on your other device or address.', 'ok');
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t.value).then(done, () => { document.execCommand('copy'); done(); }); else { document.execCommand('copy'); done(); }
+  };
+  H.svload = () => {
+    const o = unpackSave($('sv-in').value);
+    if (!o) { $('sv-msg').textContent = 'That does not look like a valid save code. Copy the whole thing, starting with CAH1.'; sfx.bad(); return; }
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(o)); } catch (e) { $('sv-msg').textContent = 'This browser is blocking storage, so the save cannot be loaded here.'; return; }
+    closeModal(); begin(true); sfx.ok();
+  };
+  H.svreset = (d, b) => {
+    if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = 'Click again to erase everything'; return; }
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* nothing to erase */ }
+    S.started = false; location.reload();
+  };
   H.sel = (d) => { deskSel = +d.u; sfx.blip(); openDesk('queue'); };
   H.take = (d) => { const t = S.tickets.find((x) => x.uid === +d.u); assign(t); S.track = t.uid; openDesk('queue'); hud(); };
   H.track = (d) => { S.track = +d.u; sfx.sel(); openDesk('queue'); hud(); };
@@ -469,14 +494,15 @@
       2: ['Dana hands you a keycard.', 'You are now <b>Systems Admin (L3)</b>. The <b>server room on Floor 2 is unlocked</b>. Outages that hit the whole office now land on you. Stay calm, find where the path breaks.'],
       3: ['Helen, the CEO, calls you upstairs.', 'You are the new <b>IT Manager</b>. From black monitors to broadcast storms, you learned it by doing it. The queue never ends, so keep playing as long as you like.'],
     }[l];
-    if (l === 2) unlockServer();
+    if (l === 2) setServer(true);
     if (l === 3) S.won = true;
     save();
     openModal(`<div class="promo"><small>${txt[0]}</small><h2>Promoted!</h2><h3>${L.t} <span>${L.s}</span></h3><p>${txt[1]}</p>${l === 3 ? `<p class="dim">${S.stats.closed} tickets closed in ${S.day} days. Satisfaction ${csatAvg().toFixed(1)}/5. ${Object.keys(S.kb).length} knowledge base articles.</p>` : ''}<button class="pri" data-a="close">${l === 3 ? 'Keep working the queue' : 'Back to work'}</button></div>`, true);
   }
-  function unlockServer() {
-    const F = WD.floors[1], d = F.furn.find((f) => f.type === 'door');
-    if (d && !d.hidden) { d.hidden = true; F.solid[d.y * MW + d.x] = 0; F.npcSolid[d.y * MW + d.x] = 0; const k = F.walls.find((w) => w.k === 'keypad'); if (k) k.open = true; FR[1] = A.renderFloor(F); }
+  function setServer(open) {
+    const F = WD.floors[1], d = F.furn.find((f) => f.type === 'door'); if (!d || !!d.hidden === open) return;
+    d.hidden = open; F.solid[d.y * MW + d.x] = open ? 0 : 1; F.npcSolid[d.y * MW + d.x] = open ? 0 : 1;
+    const k = F.walls.find((w) => w.k === 'keypad'); if (k) k.open = open; FR[1] = A.renderFloor(F);
   }
   function endDay() {
     const t = S.today, open = S.tickets.filter((x) => x.st !== 'done').length;
@@ -491,7 +517,7 @@
   };
   function openHelp() {
     openModal(`<div class="app help"><header><span class="logo">How to play</span><button class="x" data-a="close">ESC</button></header><div class="hp">
-      <div><h4>Move</h4><p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys. On a phone, use the stick.</p><h4>Interact</h4><p><kbd>E</kbd> or <kbd>Space</kbd> to talk, use devices, grab coffee.</p><h4>Tickets</h4><p><kbd>T</kbd> opens DeskFlow from anywhere. <kbd>M</kbd> mutes sound.</p></div>
+      <div><h4>Move</h4><p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys. On a phone, use the stick.</p><h4>Interact</h4><p><kbd>E</kbd> or <kbd>Space</kbd> to talk, use devices, grab coffee.</p><h4>Tickets</h4><p><kbd>T</kbd> opens DeskFlow from anywhere. <kbd>M</kbd> mutes sound.</p><h4>Saving</h4><p>Automatic, in this browser. The Save tab in DeskFlow (<kbd>P</kbd>) has a code to move your progress to another device.</p></div>
       <div><h4>Working a ticket</h4><p>1. Assign it to yourself in DeskFlow.<br>2. Talk to the person who raised it and ask questions.<br>3. Go to the device and run diagnostics.<br>4. Pick the fix that matches the evidence.<br>5. Some fixes need a part from IT storage.</p><h4>Getting promoted</h4><p>XP comes from closed tickets. Diagnose first, fix on the first try, and beat the SLA for bonuses. L3 unlocks the server room.</p></div></div></div>`);
   }
 
@@ -519,13 +545,23 @@
   }
 
   /* ---------- save / load ---------- */
+  const SAVED = ['xp', 'lvl', 'day', 'clock', 'wm', 'energy', 'csat', 'solved', 'kb', 'uid', 'stats', 'quizUsed', 'mute', 'won', 'coffee', 'snacks', 'today', 'tickets', 'track', 'inv', 'f', 'nextSpawn', 'talkDay', 'pizzaDay', 'lunchToast'];
   function save() {
-    try { const o = {}; ['xp', 'lvl', 'day', 'clock', 'wm', 'energy', 'csat', 'solved', 'kb', 'uid', 'stats', 'quizUsed', 'mute', 'won', 'coffee', 'snacks', 'today'].forEach((k) => { o[k] = S[k]; }); localStorage.setItem(SAVE_KEY, JSON.stringify(o)); } catch (e) { /* storage may be unavailable */ }
+    if (!S.started) return;
+    try { const o = { v: 2, savedAt: Date.now(), px: P.x, py: P.y }; SAVED.forEach((k) => { o[k] = S[k]; }); localStorage.setItem(SAVE_KEY, JSON.stringify(o)); ui.saveOk = true; } catch (e) { ui.saveOk = false; }
   }
   function load() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } }
+  const packSave = (o) => 'CAH1.' + btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+  function unpackSave(code) {
+    code = String(code || '').replace(/\s+/g, ''); if (!code.startsWith('CAH1.')) return null;
+    try { const o = JSON.parse(decodeURIComponent(escape(atob(code.slice(5))))); return (typeof o.xp === 'number' && o.lvl >= 0 && o.lvl <= 3 && o.day >= 1) ? o : null; } catch (e) { return null; }
+  }
+  addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+  addEventListener('pagehide', save);
 
   /* ---------- input ---------- */
   addEventListener('keydown', (e) => {
+    if (e.target && /^(TEXTAREA|INPUT)$/.test(e.target.tagName)) { if (e.key === 'Escape') e.target.blur(); return; }
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (!S.started) return;
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Tab'].includes(k)) e.preventDefault();
@@ -536,6 +572,7 @@
     if (k === 'e' || k === ' ' || k === 'Enter') interact();
     else if (k === 't' || k === 'Tab') openDesk('queue');
     else if (k === 'k') openDesk('kb');
+    else if (k === 'p') openDesk('save');
     else if (k === 'h' || k === '?') openHelp();
     else if (k === 'm') toggleMute();
   });
@@ -605,6 +642,7 @@
     ui.near = findNear();
     const pr = $('prompt'); if (ui.near) { pr.innerHTML = '<kbd>E</kbd> ' + esc(ui.near.label); pr.classList.add('on'); } else pr.classList.remove('on');
     ui.hudT -= dt; if (ui.hudT <= 0) { ui.hudT = 0.3; hud(); }
+    ui.saveT = (ui.saveT || 15) - dt; if (ui.saveT <= 0) { ui.saveT = 15; save(); }
   }
 
   /* ---------- render ---------- */
@@ -701,9 +739,16 @@
   }
   function begin(cont) {
     audio(); const sv = cont ? load() : null; S = fresh(); if (sv) Object.assign(S, sv);
-    S.started = true; S.tickets = []; S.track = null; S.inv = []; S.f = 0; S.nextSpawn = S.wm + 6;
-    P.x = 2.5 * TS; P.y = 3 * TS + 10; P.dir = 0; NPC.forEach((n) => { sitDown(n); n.t = rnd(10, 60); });
-    if (S.lvl >= 2) unlockServer();
+    S.started = true; ui.promoQ = []; ui.lockMove = false; dlgClose();
+    S.tickets = (S.tickets || []).filter((t) => t && TPL[t.id] && npcById[t.who]); S.inv = (S.inv || []).filter((k) => D.ITEMS[k]);
+    if (!S.tickets.some((t) => t.uid === S.track)) S.track = null;
+    if (!sv || sv.nextSpawn == null) S.nextSpawn = S.wm + 6;
+    NPC.forEach((n) => { sitDown(n); n.t = rnd(10, 60); n.emo = null; });
+    S.f = sv && (sv.f === 0 || sv.f === 1) ? sv.f : 0;
+    if (sv && sv.px) { P.x = sv.px; P.y = sv.py; } else { P.x = 2.5 * TS; P.y = 3 * TS + 10; }
+    setServer(S.lvl >= 2);
+    if (blocked(P.x, P.y)) { S.f = 0; P.x = 2.5 * TS; P.y = 3 * TS + 10; }
+    P.dir = 0; delete S.px; delete S.py;
     if (master) master.gain.value = S.mute ? 0 : 0.5;
     $('title').classList.add('off'); document.body.classList.add('playing'); hud();
     const dana = npcById.dana;
@@ -713,7 +758,8 @@
           dlg({ n: dana, text: 'Then diagnose before you fix. Every check costs a few minutes, but a wrong fix costs more time and their trust. Spare parts are on the shelf behind you.', next: () =>
             dlg({ n: dana, text: 'Coffee and snacks in the break room are free. Close tickets, keep people happy, and there is a promotion in it. Oh, look. Your first one just came in.', next: () => { spawnTicket('nodisplay', 'maya'); S.nextSpawn = S.wm + 45; hud(); } }) }) }) });
     } else {
-      toast(`<b>Welcome back.</b> Day ${S.day}, ${fmt(S.clock)}. ${lvlName()}.`);
+      const o = S.tickets.filter((t) => t.st !== 'done').length;
+      toast(`<b>Welcome back.</b> Day ${S.day}, ${fmt(S.clock)}. ${lvlName()}.${o ? ' ' + o + ' open ticket' + (o > 1 ? 's' : '') + ' waiting.' : ''}`);
     }
   }
   $('b-new').onclick = () => begin(false);

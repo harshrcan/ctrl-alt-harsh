@@ -21,6 +21,10 @@ Open `index.html`, or host the folder on any static host (Vercel, Netlify, GitHu
 - Promotions from Help Desk Tech to IT Manager, a locked server room, energy, coffee, free pizza at noon
 - Progress saves in your browser
 
+## Saving
+
+The game autosaves to the browser's `localStorage` (key `ctrl-alt-harsh-v1`): every 15 seconds, when a ticket closes, at day end and when the page is hidden. Saves are per browser and per web address, so two hosts have separate saves. The Save tab in DeskFlow gives a save code you can paste into another browser, device or host. There is no server or account.
+
 ## Files
 
 - `js/data.js`: employees, tickets, quiz questions. Add or edit tickets here.

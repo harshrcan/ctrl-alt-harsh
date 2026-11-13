@@ -188,3 +188,12 @@ body.touch #prompt kbd, body.touch .keys, body.touch .btns kbd { display: none; 
   #dlg { bottom: 150px; padding: 8px 10px; gap: 8px; } #dlg-face { width: 54px; height: 51px; } #dlg-text { font-size: 20px; min-height: 40px; } #dlg-ch button { font-size: 18px; }
   #prompt { bottom: 26%; } #inv { bottom: 150px; }
 }
+
+/* ---------- save tab ---------- */
+.sv { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; padding: 12px 16px 18px; }
+.sv h4 { font-family: var(--px); font-weight: 400; font-size: 9px; color: var(--amber); margin: 12px 0 6px; }
+.sv p { margin: 0 0 8px; font-size: 19px; } .sv b { color: var(--green); font-weight: 400; } .sv .bad { color: var(--red); }
+.sv textarea { display: block; width: 100%; height: 62px; resize: none; background: #05070d; color: var(--green); border: 2px solid var(--line); font: 15px/1.1 var(--tx); padding: 6px; margin-bottom: 8px; word-break: break-all; -webkit-user-select: text; user-select: text; touch-action: auto; }
+.sv .pri { font-size: 9px; padding: 9px 12px; } .sv .x { margin: 0; font-size: 8px; padding: 9px 10px; }
+@media (max-width: 760px) { .sv { grid-template-columns: 1fr; } header nav { flex-wrap: wrap; } }
+.savenote { color: var(--dim); font-size: 17px; margin: 8px 0 0; }
