@@ -197,3 +197,9 @@ body.touch #prompt kbd, body.touch .keys, body.touch .btns kbd { display: none; 
 .sv .pri { font-size: 9px; padding: 9px 12px; } .sv .x { margin: 0; font-size: 8px; padding: 9px 10px; }
 @media (max-width: 760px) { .sv { grid-template-columns: 1fr; } header nav { flex-wrap: wrap; } }
 .savenote { color: var(--dim); font-size: 17px; margin: 8px 0 0; }
+.sv input { display: block; width: 100%; background: #05070d; color: var(--fog); border: 2px solid var(--line); font: 20px/1.1 var(--tx); padding: 7px 8px; margin-bottom: 6px; -webkit-user-select: text; user-select: text; touch-action: auto; }
+.sv input:focus, .sv textarea:focus { outline: none; border-color: var(--amber); }
+.sv .two { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; } .sv .pri.alt { background: var(--green); }
+.sv .pick { background: var(--ink); border-left: 4px solid var(--blue); padding: 6px 10px; } .sv .pick span { color: var(--dim); display: inline-block; min-width: 96px; }
+.sv p.bad { color: var(--red); } .t-btns button:disabled { opacity: .5; cursor: wait; }
+#t-cloud:empty { display: none; } #t-cloud { color: var(--green); }

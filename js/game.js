@@ -195,7 +195,7 @@
     const n = npcById[t.who]; n.emo = 'heart'; n.emoT = 7;
     toast(`<b>#${t.uid} closed</b> <span class="good">+${r.xp} XP</span><br><span class="dim">${n.first}: ${pick(['Thank you!!', 'You are a lifesaver.', 'That was fast. Thanks!', 'I owe you a coffee.', 'Magic. Actual magic.'])}</span>`, 'ok');
     const nx = S.tickets.find((x) => x.st === 'mine'); S.track = nx ? nx.uid : null;
-    addXP(r.xp); save();
+    addXP(r.xp); save(true);
   }
   function addXP(n) {
     S.xp += n; S.today.xp += n; pop('+' + n + ' XP', '#6fe3a1');
@@ -395,14 +395,33 @@
       const cards = D.TICKETS.filter((t) => S.kb[t.id]).map((t) => `<article><span class="chip t${t.tier}">L${t.tier}</span><h4>${esc(t.learn[0])}</h4><p>${esc(t.learn[1])}</p></article>`).join('');
       body = `<div class="kb"><article class="pin"><h4>The six step method</h4><p>1. Identify the problem (ask questions). 2. Form a theory. 3. Test the theory. 4. Plan and apply the fix. 5. Verify it works. 6. Document it.</p></article>${cards || '<p class="empty">Close tickets to add what you learned here. ' + D.TICKETS.length + ' articles to collect.</p>'}<p class="dim">${Object.keys(S.kb).length} of ${D.TICKETS.length} articles unlocked</p></div>`;
     } else if (tab === 'save') {
-      save(); const sv = load(), when = sv && sv.savedAt ? new Date(sv.savedAt).toLocaleString() : 'never';
-      body = `<div class="sv"><div><h4>Where your progress lives</h4>
-        <p>${ui.saveOk === false ? '<span class="bad">This browser is blocking storage, so nothing can be saved here. Use a save code instead.</span>' : 'The game saves by itself in <b>this browser, on this device</b>, for this address: <b>' + esc(location.host || 'local file') + '</b>.'}</p>
-        <p>It saves every 15 seconds, whenever you close a ticket, at the end of each day, and when you leave the page. Open tickets, your backpack and where you are standing are all kept.</p>
-        <p class="dim">Last saved: ${when}. There is no account or server. A different browser, device or web address starts fresh, and clearing site data or private browsing erases it. To move your progress, use a save code.</p></div>
-        <div><h4>Move your save</h4><textarea id="sv-out" readonly>${sv ? packSave(sv) : ''}</textarea><button class="pri" data-a="svcopy">Copy save code</button>
-        <h4>Load a save code</h4><textarea id="sv-in" placeholder="Paste a save code here"></textarea><button class="pri" data-a="svload">Load this save</button><p id="sv-msg" class="dim"></p>
-        <h4>Start over</h4><button class="x" data-a="svreset">Erase my save</button></div></div>`;
+      saveLocal(); const sv = load(), when = sv && sv.savedAt ? new Date(sv.savedAt).toLocaleString() : 'never';
+      let cl;
+      if (ui.cloudPick) {
+        cl = `<p>Signed in as <b>${esc(cloud.name)}</b>. There are two different saves. Which one do you want to keep?</p>
+          <p class="pick"><span>Cloud</span> ${saveLine(ui.cloudPick)}<br><span>This device</span> ${saveLine(sv)}</p>
+          <div class="two"><button class="pri" data-a="clouduse">Use the cloud save</button><button class="x" data-a="cloudkeep">Keep this device's save</button></div>
+          <p class="dim">The one you do not pick is overwritten.</p>`;
+      } else if (cloud) {
+        cl = `<p>Signed in as <b>${esc(cloud.name)}</b>. Your progress syncs to the cloud about every 30 seconds, and right away when you close a ticket or end a day.</p>
+          <p class="dim">Last synced: ${cloud.at ? new Date(cloud.at).toLocaleString() : 'not yet'}.${cs.err ? ' <span class="bad">' + cs.err + '</span>' : ''}</p>
+          <div class="two"><button class="pri" data-a="cloudsync">Sync now</button><button class="x" data-a="cloudout">Sign out</button></div>
+          <p class="dim">On another phone or computer, open the game, come to this tab and sign in with the same name and password.</p>`;
+      } else {
+        cl = `<p>Make a player name and password to carry your progress to any device. No email needed.</p>
+          <input id="cl-name" placeholder="Player name" maxlength="20" autocomplete="username" autocapitalize="off" spellcheck="false">
+          <input id="cl-pass" type="password" placeholder="Password (6 or more characters)" maxlength="72" autocomplete="current-password">
+          <div class="two"><button class="pri" data-a="cloudin">Sign in</button><button class="pri alt" data-a="cloudreg">Create player</button></div>
+          <p id="cl-msg" class="dim">There is no password reset, so pick one you will remember. Do not reuse an important password.</p>`;
+      }
+      body = `<div class="sv"><div><h4>Cloud save</h4>${cl}</div>
+        <div><h4>On this device</h4>
+        <p>${ui.saveOk === false ? '<span class="bad">This browser is blocking storage, so nothing can be saved here.</span>' : 'The game also saves by itself in this browser for <b>' + esc(location.host || 'local file') + '</b>: every 15 seconds, when you close a ticket, and when you leave the page.'}</p>
+        <p class="dim">Last saved here: ${when}. Without cloud save, another browser, device or web address starts fresh.</p>
+        <h4>Save code</h4><textarea id="sv-out" readonly>${sv ? packSave(sv) : ''}</textarea>
+        <div class="two"><button class="x" data-a="svcopy">Copy code</button><button class="x" data-a="svpaste">Load a code</button></div>
+        <div id="sv-load" style="display:none"><textarea id="sv-in" placeholder="Paste a save code here"></textarea><button class="pri" data-a="svload">Load this save</button></div><p id="sv-msg" class="dim"></p>
+        <h4>Start over</h4><button class="x" data-a="svreset">Erase this device's save</button></div></div>`;
     } else {
       const nx = D.LEVELS[S.lvl + 1], s = S.stats;
       body = `<div class="stats"><div><b>${lvlName()}</b><small>current role</small></div><div><b>${S.xp}</b><small>XP${nx ? ' (next: ' + nx.xp + ')' : ''}</small></div><div><b>${s.closed}</b><small>tickets closed</small></div>
@@ -424,9 +443,32 @@
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(o)); } catch (e) { $('sv-msg').textContent = 'This browser is blocking storage, so the save cannot be loaded here.'; return; }
     closeModal(); begin(true); sfx.ok();
   };
+  H.svpaste = () => { $('sv-load').style.display = 'block'; $('sv-in').focus(); };
+  const clMsg = (t, bad) => { const m = $('cl-msg'); if (m) { m.textContent = t; m.className = bad ? 'bad' : 'dim'; } };
+  async function cloudAuth(fn) {
+    const name = $('cl-name').value.trim().toLowerCase(), pass = $('cl-pass').value;
+    if (!/^[a-z0-9_-]{3,20}$/.test(name)) return clMsg(CLOUD_ERR.name, true);
+    if (pass.length < 6) return clMsg(CLOUD_ERR.password, true);
+    clMsg('Talking to the cloud...'); saveLocal(); const mine = load();
+    let r; try { r = await rpc(fn, fn === 'cah_register' ? { p_name: name, p_pass: pass, p_data: mine } : { p_name: name, p_pass: pass }); } catch (e) { return clMsg('Could not reach the cloud. Check your connection and try again.', true); }
+    if (!r.ok) { sfx.bad(); return clMsg(CLOUD_ERR[r.error] || 'Something went wrong (' + r.error + ').', true); }
+    cloud = { name: r.name, token: r.token, at: fn === 'cah_register' ? Date.now() : (r.updated_at ? Date.parse(r.updated_at) : 0) }; storeCloud(); sfx.ok();
+    if (fn === 'cah_login' && r.data) {
+      const fresh0 = !mine || (mine.xp === 0 && mine.stats && mine.stats.closed === 0 && mine.day === 1);
+      if (fresh0) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(r.data)); } catch (e) { /* storage blocked */ } closeModal(); begin(true); toast('Cloud save loaded for <b>' + esc(cloud.name) + '</b>.', 'ok'); return; }
+      ui.cloudPick = r.data;
+    } else { toast('Cloud save is on for <b>' + esc(cloud.name) + '</b>.', 'ok'); if (fn === 'cah_login') await doPush(false); }
+    if (ui.desk === 'save') openDesk('save');
+  }
+  H.cloudin = () => cloudAuth('cah_login');
+  H.cloudreg = () => cloudAuth('cah_register');
+  H.clouduse = () => { const d = ui.cloudPick; ui.cloudPick = null; try { localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch (e) { /* storage blocked */ } closeModal(); begin(true); };
+  H.cloudkeep = async () => { ui.cloudPick = null; saveLocal(); await doPush(false); if (ui.desk === 'save') openDesk('save'); };
+  H.cloudsync = async (d, b) => { b.textContent = 'Syncing...'; saveLocal(); const ok = await doPush(false); if (ok) toast('Synced to the cloud.', 'ok'); if (ui.desk === 'save') openDesk('save'); };
+  H.cloudout = () => { const t = cloud && cloud.token; cloud = null; ui.cloudPick = null; storeCloud(); if (t) rpc('cah_logout', { p_token: t }).catch(() => {}); openDesk('save'); };
   H.svreset = (d, b) => {
-    if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = 'Click again to erase everything'; return; }
-    try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* nothing to erase */ }
+    if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = cloud ? 'Click again: erases here and signs out' : 'Click again to erase everything'; return; }
+    try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(CLOUD.store); } catch (e) { /* nothing to erase */ }
     S.started = false; location.reload();
   };
   H.sel = (d) => { deskSel = +d.u; sfx.blip(); openDesk('queue'); };
@@ -496,7 +538,7 @@
     }[l];
     if (l === 2) setServer(true);
     if (l === 3) S.won = true;
-    save();
+    save(true);
     openModal(`<div class="promo"><small>${txt[0]}</small><h2>Promoted!</h2><h3>${L.t} <span>${L.s}</span></h3><p>${txt[1]}</p>${l === 3 ? `<p class="dim">${S.stats.closed} tickets closed in ${S.day} days. Satisfaction ${csatAvg().toFixed(1)}/5. ${Object.keys(S.kb).length} knowledge base articles.</p>` : ''}<button class="pri" data-a="close">${l === 3 ? 'Keep working the queue' : 'Back to work'}</button></div>`, true);
   }
   function setServer(open) {
@@ -513,11 +555,11 @@
   H.newday = () => {
     S.day++; S.clock = 540; S.energy = 85; S.coffee = 0; S.snacks = 0; S.talkDay = {}; S.today = { closed: 0, xp: 0, late: 0 }; S.lunchToast = 0; S.buff = 0;
     S.f = 0; P.x = 2.5 * TS; P.y = 3 * TS + 10; P.dir = 0; NPC.forEach((n) => { sitDown(n); n.t = rnd(10, 60); });
-    S.nextSpawn = S.wm + 5; save(); closeModal(); toast(`<b>Day ${S.day}</b> &middot; 9:00 AM. Coffee is fresh.`);
+    S.nextSpawn = S.wm + 5; save(true); closeModal(); toast(`<b>Day ${S.day}</b> &middot; 9:00 AM. Coffee is fresh.`);
   };
   function openHelp() {
     openModal(`<div class="app help"><header><span class="logo">How to play</span><button class="x" data-a="close">ESC</button></header><div class="hp">
-      <div><h4>Move</h4><p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys. On a phone, use the stick.</p><h4>Interact</h4><p><kbd>E</kbd> or <kbd>Space</kbd> to talk, use devices, grab coffee.</p><h4>Tickets</h4><p><kbd>T</kbd> opens DeskFlow from anywhere. <kbd>M</kbd> mutes sound.</p><h4>Saving</h4><p>Automatic, in this browser. The Save tab in DeskFlow (<kbd>P</kbd>) has a code to move your progress to another device.</p></div>
+      <div><h4>Move</h4><p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys. On a phone, use the stick.</p><h4>Interact</h4><p><kbd>E</kbd> or <kbd>Space</kbd> to talk, use devices, grab coffee.</p><h4>Tickets</h4><p><kbd>T</kbd> opens DeskFlow from anywhere. <kbd>M</kbd> mutes sound.</p><h4>Saving</h4><p>Automatic, in this browser. Open the Save tab in DeskFlow (<kbd>P</kbd>) to turn on cloud save and play on any device.</p></div>
       <div><h4>Working a ticket</h4><p>1. Assign it to yourself in DeskFlow.<br>2. Talk to the person who raised it and ask questions.<br>3. Go to the device and run diagnostics.<br>4. Pick the fix that matches the evidence.<br>5. Some fixes need a part from IT storage.</p><h4>Getting promoted</h4><p>XP comes from closed tickets. Diagnose first, fix on the first try, and beat the SLA for bonuses. L3 unlocks the server room.</p></div></div></div>`);
   }
 
@@ -546,18 +588,50 @@
 
   /* ---------- save / load ---------- */
   const SAVED = ['xp', 'lvl', 'day', 'clock', 'wm', 'energy', 'csat', 'solved', 'kb', 'uid', 'stats', 'quizUsed', 'mute', 'won', 'coffee', 'snacks', 'today', 'tickets', 'track', 'inv', 'f', 'nextSpawn', 'talkDay', 'pizzaDay', 'lunchToast'];
-  function save() {
+  function saveLocal() {
     if (!S.started) return;
     try { const o = { v: 2, savedAt: Date.now(), px: P.x, py: P.y }; SAVED.forEach((k) => { o[k] = S[k]; }); localStorage.setItem(SAVE_KEY, JSON.stringify(o)); ui.saveOk = true; } catch (e) { ui.saveOk = false; }
   }
+  function save(now) { saveLocal(); cloudPush(now === true); }
   function load() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } }
   const packSave = (o) => 'CAH1.' + btoa(unescape(encodeURIComponent(JSON.stringify(o))));
   function unpackSave(code) {
     code = String(code || '').replace(/\s+/g, ''); if (!code.startsWith('CAH1.')) return null;
     try { const o = JSON.parse(decodeURIComponent(escape(atob(code.slice(5))))); return (typeof o.xp === 'number' && o.lvl >= 0 && o.lvl <= 3 && o.day >= 1) ? o : null; } catch (e) { return null; }
   }
-  addEventListener('visibilitychange', () => { if (document.hidden) save(); });
-  addEventListener('pagehide', save);
+  const leaving = () => { saveLocal(); if (cloud && S.started && !ui.cloudPick) doPush(true); };
+  addEventListener('visibilitychange', () => { if (document.hidden) leaving(); });
+  addEventListener('pagehide', leaving);
+
+  /* ---------- cloud saves (Supabase). The key below is a publishable key: it is meant to be public.
+     The database only exposes five functions; the tables themselves cannot be read from the browser. ---------- */
+  const CLOUD = { url: 'https://cvgzypgaabjwunrfzmlr.supabase.co', key: 'sb_publishable_LXFQVsj-5f6wiTAqMeqy2g_zyplMHlT', store: 'ctrl-alt-harsh-cloud' };
+  let cloud = null; try { cloud = JSON.parse(localStorage.getItem(CLOUD.store) || 'null'); } catch (e) { cloud = null; }
+  const cs = { busy: false, lastTry: -1e9, err: '' };
+  const storeCloud = () => { try { if (cloud) localStorage.setItem(CLOUD.store, JSON.stringify(cloud)); else localStorage.removeItem(CLOUD.store); } catch (e) { /* storage blocked */ } };
+  async function rpc(fn, args, keepalive) {
+    const r = await fetch(CLOUD.url + '/rest/v1/rpc/' + fn, { method: 'POST', keepalive: !!keepalive, headers: { 'Content-Type': 'application/json', apikey: CLOUD.key, Authorization: 'Bearer ' + CLOUD.key }, body: JSON.stringify(args) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+  function cloudPush(now) {
+    if (!cloud || !S.started || ui.cloudPick || cs.busy) return;
+    if (!now && performance.now() - cs.lastTry < 30000) return;
+    doPush(false);
+  }
+  async function doPush(keepalive) {
+    const sv = load(); if (!sv || !cloud) return false;
+    cs.busy = true; cs.lastTry = performance.now(); let ok = false;
+    try {
+      const r = await rpc('cah_save', { p_token: cloud.token, p_data: sv }, keepalive);
+      if (r.ok) { cloud.at = Date.now(); cs.err = ''; storeCloud(); ok = true; }
+      else if (r.error === 'session') { cloud = null; storeCloud(); cs.err = ''; toast('Cloud save signed out. Sign in again from the Save tab to keep syncing.', 'warn'); }
+      else cs.err = 'The cloud refused that save (' + r.error + ').';
+    } catch (e) { cs.err = 'Could not reach the cloud. Your progress is still saved on this device.'; }
+    cs.busy = false; return ok;
+  }
+  const CLOUD_ERR = { name: 'Player name: 3 to 20 letters, numbers, dashes or underscores.', password: 'Password needs at least 6 characters.', taken: 'That player name is taken. Pick another, or sign in if it is yours.', invalid: 'Wrong player name or password.', locked: 'Too many wrong tries. Wait 10 minutes and try again.', busy: 'Lots of new players right now. Try again in a little while.', size: 'That save is too large to store.' };
+  const saveLine = (o) => o ? `Day ${o.day}, ${D.LEVELS[o.lvl] ? D.LEVELS[o.lvl].t : '?'}, ${o.xp} XP` : 'nothing yet';
 
   /* ---------- input ---------- */
   addEventListener('keydown', (e) => {
@@ -739,7 +813,7 @@
   }
   function begin(cont) {
     audio(); const sv = cont ? load() : null; S = fresh(); if (sv) Object.assign(S, sv);
-    S.started = true; ui.promoQ = []; ui.lockMove = false; dlgClose();
+    S.started = true; ui.promoQ = []; ui.lockMove = false; dlgClose(); cs.lastTry = performance.now();
     S.tickets = (S.tickets || []).filter((t) => t && TPL[t.id] && npcById[t.who]); S.inv = (S.inv || []).filter((k) => D.ITEMS[k]);
     if (!S.tickets.some((t) => t.uid === S.track)) S.track = null;
     if (!sv || sv.nextSpawn == null) S.nextSpawn = S.wm + 6;
@@ -764,7 +838,22 @@
   }
   $('b-new').onclick = () => begin(false);
   $('b-cont').onclick = () => begin(true);
-  if (load()) { $('b-cont').style.display = ''; const s = load(); $('b-cont').textContent = `Continue (Day ${s.day}, ${D.LEVELS[s.lvl].t})`; }
+  function refreshContinue() { const s = load(), b = $('b-cont'); if (s && D.LEVELS[s.lvl]) { b.style.display = ''; b.textContent = `Continue (Day ${s.day}, ${D.LEVELS[s.lvl].t})`; } else b.style.display = 'none'; }
+  refreshContinue();
+  (async () => {
+    if (!cloud) return;
+    const tc = $('t-cloud'), bc = $('b-cont'), bn = $('b-new'); bc.disabled = bn.disabled = true; tc.textContent = 'Checking the cloud save for ' + cloud.name + '...';
+    try {
+      const r = await Promise.race([rpc('cah_load', { p_token: cloud.token }), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))]);
+      if (r.ok) {
+        const loc = load();
+        if (r.data && (!loc || (r.data.savedAt || 0) > (loc.savedAt || 0) + 2000)) { localStorage.setItem(SAVE_KEY, JSON.stringify(r.data)); tc.textContent = 'Signed in as ' + cloud.name + '. Newer progress loaded from the cloud.'; }
+        else tc.textContent = 'Cloud save on. Signed in as ' + cloud.name + '.';
+        cloud.at = r.updated_at ? Date.parse(r.updated_at) : cloud.at; storeCloud();
+      } else { cloud = null; storeCloud(); tc.textContent = 'Cloud sign-in expired. Sign in again from the Save tab.'; }
+    } catch (e) { tc.textContent = 'Could not reach the cloud. Playing from this device.'; }
+    bc.disabled = bn.disabled = false; refreshContinue();
+  })();
   const hf = $('h-face').getContext('2d'); hf.drawImage(harshSheet.f[0][0], 0, 0);
   const tf = $('t-face').getContext('2d'); tf.drawImage(harshSheet.f[0][0], 0, 0);
   if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');

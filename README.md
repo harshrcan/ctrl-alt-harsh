@@ -23,7 +23,11 @@ Open `index.html`, or host the folder on any static host (Vercel, Netlify, GitHu
 
 ## Saving
 
-The game autosaves to the browser's `localStorage` (key `ctrl-alt-harsh-v1`): every 15 seconds, when a ticket closes, at day end and when the page is hidden. Saves are per browser and per web address, so two hosts have separate saves. The Save tab in DeskFlow gives a save code you can paste into another browser, device or host. There is no server or account.
+- **On the device:** the game autosaves to the browser's `localStorage` (key `ctrl-alt-harsh-v1`) every 15 seconds, when a ticket closes, at day end and when the page is hidden. This is per browser and per web address.
+- **Cloud save (optional):** in the Save tab, create a player name and password. Progress then syncs to a Supabase database and follows you to any device or host. No email is collected. Passwords are stored as bcrypt hashes and there is no reset.
+- **Save code:** the Save tab can also export the save as a text code to paste somewhere else.
+
+The Supabase side is two tables (`cah_players`, `cah_sessions`) with row level security on and no policies, plus five `cah_*` functions that are the only way in. The key in `js/game.js` is a publishable key and is meant to be public.
 
 ## Files
 
