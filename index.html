@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Ctrl+Alt+Harsh | An IT help desk game</title>
+<meta name="description" content="Play as Harsh, the new IT guy at Cedarline. Solve real help desk tickets across a two-floor pixel office, drink free coffee, and get promoted.">
+<meta name="theme-color" content="#0d0e16">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230d0e16'/%3E%3Crect x='3' y='3' width='10' height='7' fill='%234c86ff'/%3E%3Crect x='7' y='10' width='2' height='2' fill='%23ffb23e'/%3E%3Crect x='5' y='12' width='6' height='1' fill='%23ffb23e'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game" aria-label="Game view"></canvas>
+
+<div id="hud">
+  <div class="card me">
+    <canvas id="h-face" width="18" height="17"></canvas>
+    <div class="who">
+      <b>Harsh</b><span id="h-title"></span>
+      <div class="bar"><i id="h-xp"></i></div>
+      <small id="h-xpt"></small>
+    </div>
+  </div>
+  <div class="card vit">
+    <label>Energy</label><div class="bar en"><i id="h-en"></i></div>
+    <label>Rating</label><span id="h-cs" class="stars"></span>
+  </div>
+  <div class="card time"><b id="h-clock">9:00 AM</b><small id="h-day">Day 1</small></div>
+  <div class="btns">
+    <button id="b-tk">Tickets <kbd>T</kbd><em id="h-tk">0</em></button>
+    <button id="b-help">Help <kbd>H</kbd></button>
+    <button id="b-mute">Sound on</button>
+  </div>
+</div>
+<div id="obj"></div>
+<div id="room"></div>
+<div id="inv"></div>
+<div id="prompt"></div>
+<div id="toasts"></div>
+
+<div id="dlg">
+  <canvas id="dlg-face" width="18" height="17"></canvas>
+  <div class="dlg-b">
+    <div class="dlg-h"><b id="dlg-name"></b><span id="dlg-role"></span></div>
+    <p id="dlg-text"></p>
+    <div id="dlg-ch"></div>
+    <span id="dlg-more">E / tap to continue</span>
+  </div>
+</div>
+
+<div id="modal"><div id="win"></div></div>
+
+<div id="touch">
+  <div id="joy"><div id="knob"></div></div>
+  <button id="act">E</button>
+</div>
+
+<div id="title">
+  <div class="t-in">
+    <canvas id="t-face" width="18" height="17"></canvas>
+    <h1>Ctrl<span>+</span>Alt<span>+</span>Harsh</h1>
+    <p class="tag">You are the new IT guy at Cedarline. Twenty coworkers, two floors, one ticket queue.</p>
+    <div class="t-btns">
+      <button id="b-cont" style="display:none">Continue</button>
+      <button id="b-new">New game</button>
+    </div>
+    <p class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &nbsp; <kbd>E</kbd> interact &nbsp; <kbd>T</kbd> tickets</p>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/art.js"></script>
+<script src="js/world.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
